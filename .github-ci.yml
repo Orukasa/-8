@@ -1,0 +1,51 @@
+stages:
+  - deploy
+
+variables:
+  DEPLOY_DIR: /home/${SERVER_USER}/app
+
+deploy_to_vm:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - main
+  environment:
+    name: production
+    url: http://${SERVER_IP}
+  before_script:
+    - apk update && apk add openssh-client rsync bash
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "Host *" > ~/.ssh/config
+    - echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+    - echo "  UserKnownHostsFile /dev/null" >> ~/.ssh/config
+    - chmod 600 ~/.ssh/config
+    # Test SSH connection (optional)
+    - ssh ${SERVER_USER}@${SERVER_IP} "echo 'SSH connection successful'"
+
+  script:
+    - ssh ${SERVER_USER}@${SERVER_IP} "mkdir -p ${DEPLOY_DIR}"
+
+    - rsync -avz --delete --exclude='.git/' --exclude='.env' ./ ${SERVER_USER}@${SERVER_IP}:${DEPLOY_DIR}/
+
+    - ssh ${SERVER_USER}@${SERVER_IP} "echo \"$CI_ENV_FILE_CONTENT\" > ${DEPLOY_DIR}/.env"
+
+    - ssh ${SERVER_USER}@${SERVER_IP} "cd ${DEPLOY_DIR} && \
+        echo 'Logging into Docker registry if needed...' && \
+        \
+        echo 'Pulling latest images...' && \
+        docker compose pull && \
+        \
+        echo 'Building required services (nginx, mysql)...' && \
+        docker compose build nginx mysql && \
+        \
+        echo 'Starting services...' && \
+        docker compose up -d && \
+        \
+        echo 'Deployment complete! Pruning old docker images (optional)...' && \
+        docker image prune -f"
+
+  after_script:
+    - eval $(ssh-agent -k)
