@@ -1,14 +1,15 @@
 version: '3.8'
+
 services:
   nginx:
     build:
-      context: ./nginx
+      context: ./nginx 
     container_name: nginx_server
     ports:
       - "80:80"   # Проброс порта 80 хоста на порт 80 контейнера
-      - "443:80"  # Проброс порта 443 хоста на порт 80 контейнера 
+      - "443:80"  # Проброс порта 443 хоста на порт 80 контейнера
     volumes:
-      - ./src:/var/www/html
+      - ./src:/var/www/html 
     depends_on:
       - php 
       - db 
@@ -16,10 +17,10 @@ services:
       - app-network
 
   php:
-    image: php:8.1-fpm-alpine 
+    image: php:8.1-fpm-alpine
     container_name: php_fpm
     volumes:
-      - ./src:/var/www/html 
+      - ./src:/var/www/html
     expose:
       - 9000
     depends_on:
@@ -33,13 +34,13 @@ services:
 
   db:
     build:
-      context: ./mysql 
+      context: ./mysql
     container_name: mysql_db
     environment:
-      MYSQL_ROOT_PASSWORD: ${Orukasa} 
-      MYSQL_DATABASE: ${db}           
-      MYSQL_USER: ${user}                  
-      MYSQL_PASSWORD: ${1234}           
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} # Пароль root
+      MYSQL_DATABASE: ${MYSQL_DATABASE}           # База данных для создания
+      MYSQL_USER: ${MYSQL_USER}                   # Пользователь для создания
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}           # Пароль для пользователя
     volumes:
       - db_data:/var/lib/mysql 
     expose:
@@ -53,18 +54,18 @@ services:
         retries: 5
 
   phpmyadmin:
-    image: phpmyadmin:latest 
+    image: phpmyadmin:latest
     container_name: phpmyadmin_ui
     ports:
-      - "8080:80" 
+      - "8080:80" # Проброс порта 8080 хоста на порт 80 контейнера
     environment:
-      PMA_HOST: db       
-      PMA_PORT: 3306      
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
-      UPLOAD_LIMIT: 1G     
+      PMA_HOST: db          # Подключение к сервису MySQL с именем 'db'
+      PMA_PORT: 3306        # Порт MySQL
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      UPLOAD_LIMIT: 1G 
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
     networks:
       - app-network
 
