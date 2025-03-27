@@ -1,0 +1,77 @@
+version: '3.8'
+services:
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx_server
+    ports:
+      - "80:80"   # Проброс порта 80 хоста на порт 80 контейнера
+      - "443:80"  # Проброс порта 443 хоста на порт 80 контейнера 
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - php 
+      - db 
+    networks:
+      - app-network
+
+  php:
+    image: php:8.1-fpm-alpine 
+    container_name: php_fpm
+    volumes:
+      - ./src:/var/www/html 
+    expose:
+      - 9000
+    depends_on:
+      - db
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - app-network
+
+  db:
+    build:
+      context: ./mysql 
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${Orukasa} 
+      MYSQL_DATABASE: ${db}           
+      MYSQL_USER: ${user}                  
+      MYSQL_PASSWORD: ${1234}           
+    volumes:
+      - db_data:/var/lib/mysql 
+    expose:
+      - 3306
+    networks:
+      - app-network
+    healthcheck:
+        test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin:latest 
+    container_name: phpmyadmin_ui
+    ports:
+      - "8080:80" 
+    environment:
+      PMA_HOST: db       
+      PMA_PORT: 3306      
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
+      UPLOAD_LIMIT: 1G     
+    depends_on:
+      db:
+        condition: service_healthy 
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
